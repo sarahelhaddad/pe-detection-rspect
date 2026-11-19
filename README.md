@@ -42,7 +42,7 @@ splits/      Study-ID lists for train / val / test
 - [x] 01 Inspect data and labels
 - [x] 02 Define labels and study-level split (Kim et al. label rule: 7,122 studies)
 - [x] 03 Preprocessing and caching (10% of slices, 175,071 images, 7,122 studies)
-- [ ] 04 Baseline model
-- [ ] 05 Kim-style aggregation model
+- [x] 04 Slice classifier (ConvNeXt-Tiny) - notebook 05
+- [ ] 05 Patient-level Random Forest + test evaluation - notebook 06
 - [ ] 06 PENet-style 3D model
 - [ ] 07 Final test evaluation
