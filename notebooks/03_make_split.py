@@ -20,17 +20,20 @@ print("Max distinct values per study for each label column (should all be 1):")
 print(varying.to_string())
 studies = df.drop_duplicates("StudyInstanceUID").set_index("StudyInstanceUID")
 
-# Label definition (deviation log: indeterminate and chronic-only studies are excluded).
+# Label definition, matching Kim et al. (2,211 positive / 4,911 negative studies):
+#   negative = negative_exam_for_pe == 1
+#   positive = negative_exam_for_pe == 0 and not indeterminate
+#              (this INCLUDES chronic-only studies)
+# Deviation log: indeterminate studies are excluded.
 neg = studies["negative_exam_for_pe"] == 1
 indet = studies["indeterminate"] == 1
 chronic_only = (studies["chronic_pe"] == 1) & (studies["acute_and_chronic_pe"] == 0)
-pos = (studies["negative_exam_for_pe"] == 0) & ~indet & ~chronic_only
+pos = (studies["negative_exam_for_pe"] == 0) & ~indet
 
 print("\nStudy counts before exclusions:", len(studies))
 print("  negative:", int(neg.sum()))
 print("  indeterminate (excluded):", int(indet.sum()))
-print("  chronic-only (excluded):", int(chronic_only.sum()))
-print("  PE-positive (acute, or acute + chronic):", int(pos.sum()))
+print("  PE-positive:", int(pos.sum()), f"(of which chronic-only: {int((pos & chronic_only).sum())})")
 
 keep = neg | pos
 lab = pos[keep].astype(int).rename("pe")
