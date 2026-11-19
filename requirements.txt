@@ -6,3 +6,7 @@ torch
 torchvision
 timm
 matplotlib
+pylibjpeg
+pylibjpeg-libjpeg
+pylibjpeg-openjpeg
+opencv-python-headless

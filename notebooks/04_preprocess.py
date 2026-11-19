@@ -10,6 +10,7 @@ For every study in the split files this script
 It is resumable: studies that already have a cache file are skipped.
 
 Usage (in a Kaggle notebook):
+    !pip install -q pydicom pylibjpeg pylibjpeg-libjpeg pylibjpeg-openjpeg   # decoders for compressed DICOMs
     !python pe-detection-rspect/notebooks/04_preprocess.py --limit 20     # quick test + timing
     !python pe-detection-rspect/notebooks/04_preprocess.py                # everything
 """
