@@ -4,7 +4,24 @@ import os
 import time
 import pandas as pd
 
-ROOT = "/kaggle/input/competitions/rsna-str-pulmonary-embolism-detection"
+def find_root():
+    """Locate the competition folder (Kaggle mounts it at different paths in different sessions)."""
+    env = os.environ.get("RSPECT_ROOT")
+    if env:
+        return env
+    base = "/kaggle/input"
+    for p in ("/kaggle/input/competitions/rsna-str-pulmonary-embolism-detection",
+              "/kaggle/input/rsna-str-pulmonary-embolism-detection"):
+        if os.path.isfile(f"{p}/train.csv"):
+            return p
+    for d1 in sorted(os.listdir(base)) if os.path.isdir(base) else []:      # search up to 3 levels
+        for p in (f"{base}/{d1}", *[f"{base}/{d1}/{d2}" for d2 in (sorted(os.listdir(f"{base}/{d1}")) if os.path.isdir(f"{base}/{d1}") else [])]):
+            if os.path.isfile(f"{p}/train.csv"):
+                return p
+    raise SystemExit("Could not find train.csv under /kaggle/input. Check that the competition is attached "
+                     "(Input panel) and tell Claude what `os.listdir('/kaggle/input')` shows.")
+
+ROOT = find_root()
 TRAIN_DIR = f"{ROOT}/train"
 OUT = "/kaggle/working/study_file_counts.csv"
 

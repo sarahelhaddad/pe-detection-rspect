@@ -24,13 +24,32 @@ import numpy as np
 import pandas as pd
 import pydicom
 
-ROOT = os.environ.get("RSPECT_ROOT", "/kaggle/input/competitions/rsna-str-pulmonary-embolism-detection")
 SPLITS = os.environ.get("RSPECT_SPLITS", "/kaggle/working/splits")
 CACHE = os.environ.get("RSPECT_CACHE", "/kaggle/working/cache")
 STEP = 10                 # keep every 10th slice (about 10% of each study)
 SIZE = 224                # ConvNeXt input size used by Kim et al.
 WL, WW = 40, 400          # window centre / width used by Kim et al.
 LO, HI = WL - WW / 2, WL + WW / 2
+
+
+def find_root():
+    """Locate the competition folder (Kaggle mounts it at different paths in different sessions)."""
+    env = os.environ.get("RSPECT_ROOT")
+    if env:
+        return env
+    base = "/kaggle/input"
+    for p in ("/kaggle/input/competitions/rsna-str-pulmonary-embolism-detection",
+              "/kaggle/input/rsna-str-pulmonary-embolism-detection"):
+        if os.path.isfile(f"{p}/train.csv"):
+            return p
+    for d1 in sorted(os.listdir(base)) if os.path.isdir(base) else []:      # search up to 3 levels
+        for p in (f"{base}/{d1}", *[f"{base}/{d1}/{d2}" for d2 in (sorted(os.listdir(f"{base}/{d1}")) if os.path.isdir(f"{base}/{d1}") else [])]):
+            if os.path.isfile(f"{p}/train.csv"):
+                return p
+    raise SystemExit("Could not find train.csv under /kaggle/input. Check that the competition is attached "
+                     "(Input panel) and tell Claude what `os.listdir('/kaggle/input')` shows.")
+
+ROOT = find_root()
 
 
 def slice_position(path):
