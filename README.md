@@ -39,9 +39,9 @@ splits/      Study-ID lists for train / val / test
 
 ## Status
 
-- [ ] 01 Inspect data and labels
-- [ ] 02 Define labels and study-level split
-- [ ] 03 Preprocessing and caching
+- [x] 01 Inspect data and labels
+- [x] 02 Define labels and study-level split (Kim et al. label rule: 7,122 studies)
+- [x] 03 Preprocessing and caching (10% of slices, 175,071 images, 7,122 studies)
 - [ ] 04 Baseline model
 - [ ] 05 Kim-style aggregation model
 - [ ] 06 PENet-style 3D model
