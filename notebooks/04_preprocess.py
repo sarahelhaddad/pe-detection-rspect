@@ -58,7 +58,7 @@ def process_study(args):
     study, slices = args                                    # slices: list of (series, sop, label)
     out = os.path.join(CACHE, f"{study}.npz")
     if os.path.exists(out):
-        return study, "skipped", 0, 0
+        return study, "skipped", 0, 0, None
     try:
         # Use the series with the most slices if a study has several.
         series_counts = pd.Series([s for s, _, _ in slices]).value_counts()
@@ -68,23 +68,30 @@ def process_study(args):
         z = np.array([slice_position(p) for p in paths])
         order = np.argsort(z, kind="stable")
         pick = order[STEP // 2::STEP]                       # evenly spaced, in body order
-        imgs, labels, zs, fails = [], [], [], 0
+        imgs, labels, zs, fails, first_err = [], [], [], 0, None
         for i in pick:
             try:
                 imgs.append(load_slice(paths[i]))
                 labels.append(items[i][1])
                 zs.append(z[i])
-            except Exception:
+            except Exception as e:
                 fails += 1
+                if first_err is None:
+                    ts = ""
+                    try:
+                        ts = str(pydicom.dcmread(paths[i], stop_before_pixels=True).file_meta.TransferSyntaxUID.name)
+                    except Exception:
+                        pass
+                    first_err = f"{type(e).__name__}: {str(e)[:200]} | transfer syntax: {ts}"
         if not imgs:
-            return study, "no_images", 0, fails
+            return study, "no_images", 0, fails, first_err
         tmp = out + ".tmp.npz"
         np.savez(tmp, x=np.stack(imgs), y=np.array(labels, dtype=np.uint8),
                  z=np.array(zs, dtype=np.float32), n_total=len(items))
         os.replace(tmp, out)
-        return study, "ok" if len(set(series_counts.index)) == 1 else "ok_multi_series", len(imgs), fails
+        return study, "ok" if len(set(series_counts.index)) == 1 else "ok_multi_series", len(imgs), fails, first_err
     except Exception as e:                                  # keep going, report at the end
-        return study, f"error: {type(e).__name__}: {e}", 0, 0
+        return study, "error", 0, 0, f"{type(e).__name__}: {str(e)[:200]}"
 
 
 def main():
@@ -108,18 +115,26 @@ def main():
             for s, g in df.groupby("StudyInstanceUID")]
     print(f"Studies to process: {len(jobs)} | workers: {a.workers} | keep every {STEP}th slice")
 
-    t0, stats, n_img, n_fail = time.time(), {}, 0, 0
+    t0, stats, n_img, n_fail, problems = time.time(), {}, 0, 0, []
     with Pool(a.workers) as pool:
-        for i, (study, status, n, fails) in enumerate(pool.imap_unordered(process_study, jobs), 1):
+        for i, (study, status, n, fails, err) in enumerate(pool.imap_unordered(process_study, jobs), 1):
             stats[status] = stats.get(status, 0) + 1
             n_img += n
             n_fail += fails
+            if err:
+                problems.append((study, status, fails, err))
             if i % 50 == 0 or i == len(jobs):
                 el = time.time() - t0
                 print(f"  {i}/{len(jobs)} studies | {el:.0f}s elapsed | ~{el / i * (len(jobs) - i) / 60:.0f} min left", flush=True)
 
     print("\nStatus counts:", stats)
     print("Images cached this run:", n_img, "| slices that failed to decode:", n_fail)
+    if problems:
+        print(f"\nStudies with problems: {len(problems)} (showing up to 10)")
+        for study, status, fails, err in problems[:10]:
+            print(f"  {study} [{status}] failed slices: {fails}\n    {err}")
+        pd.DataFrame(problems, columns=["study", "status", "failed_slices", "error"]).to_csv(
+            os.path.join(os.path.dirname(CACHE.rstrip("/")), "preprocess_problems.csv"), index=False)
     size = sum(os.path.getsize(os.path.join(CACHE, f)) for f in os.listdir(CACHE)) / 1e9
     print(f"Cache folder size: {size:.2f} GB | total time: {(time.time() - t0) / 60:.1f} min")
 
